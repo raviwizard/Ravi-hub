@@ -10,6 +10,8 @@ local espEnabled, jumpEnabled, speedEnabled, flyEnabled = false, false, false, f
 local noclipEnabled, brightEnabled = false, false
 local BodyGyro, BodyVelocity
 local espObjects = {}
+local selectedTarget = nil
+local grabbing = false
 
 -- Ferramenta de teleporte
 local function giveTeleportTool()
@@ -17,7 +19,6 @@ local function giveTeleportTool()
 	tool.RequiresHandle = false
 	tool.Name = "Teleport Tool"
 	tool.Parent = player.Backpack
-
 	tool.Activated:Connect(function()
 		if mouse then
 			local pos = mouse.Hit.Position
@@ -43,7 +44,6 @@ main.Name = "MainFrame"
 main.Active = true
 main.Draggable = true
 
--- Borda RGB animada
 local stroke = Instance.new("UIStroke")
 stroke.Thickness = 2
 stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -56,7 +56,6 @@ runService.RenderStepped:Connect(function()
 	stroke.Color = Color3.fromHSV(hue, 1, 1)
 end)
 
--- Botão com nome "Ravi Hub" e animação de minimizar
 local toggleBtn = Instance.new("TextButton", main)
 toggleBtn.Size = UDim2.new(1, 0, 0, 20)
 toggleBtn.Position = UDim2.new(0, 0, 0, 0)
@@ -83,7 +82,6 @@ end
 
 toggleBtn.MouseButton1Click:Connect(toggleContent)
 
--- Criação de opções
 local function createOption(name, y)
 	local label = Instance.new("TextLabel", main)
 	label.Text = name
@@ -116,7 +114,6 @@ local function createOption(name, y)
 	return toggle, input
 end
 
--- Botões principais
 local jumpToggle, jumpBox = createOption("Pulo Alto", 30)
 local speedToggle, speedBox = createOption("Velocidade", 60)
 local flyToggle, flyBox = createOption("Voar", 90)
@@ -156,6 +153,59 @@ teleportToolBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 teleportToolBtn.TextColor3 = Color3.new(1, 1, 1)
 teleportToolBtn.Font = Enum.Font.Code
 teleportToolBtn.TextSize = 12
+
+-- Botão Grab Player
+local grabToggle = Instance.new("TextButton", main)
+grabToggle.Size = UDim2.new(0, 90, 0, 20)
+grabToggle.Position = UDim2.new(0, 10, 0, 240)
+grabToggle.Text = "Grab: Off"
+grabToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+grabToggle.TextColor3 = Color3.new(1, 1, 1)
+grabToggle.Font = Enum.Font.Code
+grabToggle.TextSize = 12
+
+local playerList = Instance.new("TextButton", main)
+playerList.Size = UDim2.new(0, 90, 0, 20)
+playerList.Position = UDim2.new(0, 100, 0, 240)
+playerList.Text = "Selecionar Player"
+playerList.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+playerList.TextColor3 = Color3.new(1, 1, 1)
+playerList.Font = Enum.Font.Code
+playerList.TextSize = 12
+
+playerList.MouseButton1Click:Connect(function()
+	local menu = Instance.new("Frame", screenGui)
+	menu.Position = UDim2.new(0, 220, 0.4, 0)
+	menu.Size = UDim2.new(0, 150, 0, 20 * #game.Players:GetPlayers())
+	menu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	menu.Name = "PlayerDropdown"
+	for i, p in ipairs(game.Players:GetPlayers()) do
+		if p ~= player then
+			local btn = Instance.new("TextButton", menu)
+			btn.Size = UDim2.new(1, 0, 0, 20)
+			btn.Position = UDim2.new(0, 0, 0, (i - 1) * 20)
+			btn.Text = p.Name
+			btn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+			btn.TextColor3 = Color3.new(1, 1, 1)
+			btn.Font = Enum.Font.Code
+			btn.TextSize = 12
+			btn.MouseButton1Click:Connect(function()
+				selectedTarget = p
+				playerList.Text = p.Name
+				menu:Destroy()
+			end)
+		end
+	end
+end)
+
+grabToggle.MouseButton1Click:Connect(function()
+	grabbing = not grabbing
+	grabToggle.Text = "Grab: " .. (grabbing and "On" or "Off")
+	if not grabbing and player.Character then
+		local root = player.Character:FindFirstChild("HumanoidRootPart")
+		if root then root.Anchored = false end
+	end
+end)
 
 -- Conexões
 jumpToggle.MouseButton1Click:Connect(function()
@@ -252,7 +302,6 @@ runService.RenderStepped:Connect(function()
 					tag.Size = UDim2.new(0, 100, 0, 40)
 					tag.StudsOffset = Vector3.new(0, 2, 0)
 					tag.AlwaysOnTop = true
-
 					local nameLabel = Instance.new("TextLabel", tag)
 					nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
 					nameLabel.BackgroundTransparency = 1
@@ -260,7 +309,6 @@ runService.RenderStepped:Connect(function()
 					nameLabel.TextColor3 = Color3.new(1, 1, 1)
 					nameLabel.Font = Enum.Font.Code
 					nameLabel.TextSize = 14
-
 					local distLabel = Instance.new("TextLabel", tag)
 					distLabel.Size = UDim2.new(1, 0, 0.5, 0)
 					distLabel.Position = UDim2.new(0, 0, 0.5, 0)
@@ -268,16 +316,26 @@ runService.RenderStepped:Connect(function()
 					distLabel.TextColor3 = Color3.new(1, 1, 1)
 					distLabel.Font = Enum.Font.Code
 					distLabel.TextSize = 12
-
 					runService.RenderStepped:Connect(function()
 						if player.Character and p.Character and player.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("HumanoidRootPart") then
 							local dist = (player.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
 							distLabel.Text = string.format("Distância: %.1f", dist)
 						end
 					end)
-
 					table.insert(espObjects, tag)
 				end
+			end
+		end
+	end
+
+	if grabbing and selectedTarget and selectedTarget.Character and player.Character then
+		local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
+		local targetRoot = selectedTarget.Character:FindFirstChild("HumanoidRootPart")
+		if myRoot and targetRoot then
+			myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 1)
+			local hum = selectedTarget.Character:FindFirstChildOfClass("Humanoid")
+			if hum and hum.Health > 0 then
+				hum:TakeDamage(1)
 			end
 		end
 	end
