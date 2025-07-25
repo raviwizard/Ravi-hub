@@ -1,160 +1,87 @@
--- Serviços
+-- GUI Ravi Hub com função Grab Player
 local player = game.Players.LocalPlayer
 local uis = game:GetService("UserInputService")
 local runService = game:GetService("RunService")
-local tweenService = game:GetService("TweenService")
-local mouse = player:GetMouse()
 
--- Estados
-local espEnabled, jumpEnabled, speedEnabled, flyEnabled = false, false, false, false
-local noclipEnabled, brightEnabled = false, false
-local BodyGyro, BodyVelocity
-local espObjects = {}
-local selectedTarget = nil
-local grabbing = false
-
--- Ferramenta de teleporte
-local function giveTeleportTool()
-	local tool = Instance.new("Tool")
-	tool.RequiresHandle = false
-	tool.Name = "Teleport Tool"
-	tool.Parent = player.Backpack
-	tool.Activated:Connect(function()
-		if mouse then
-			local pos = mouse.Hit.Position
-			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-				player.Character.HumanoidRootPart.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
-			end
-		end
-	end)
-end
-
--- GUI
-local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-screenGui.Name = "MiniHub"
-screenGui.ResetOnSpawn = false
+local screenGui = Instance.new("ScreenGui", game.CoreGui)
+screenGui.Name = "RaviHub"
 
 local main = Instance.new("Frame", screenGui)
-main.Position = UDim2.new(0, 10, 0.4, 0)
-main.Size = UDim2.new(0, 200, 0, 260)
-main.BackgroundColor3 = Color3.new(0, 0, 0)
-main.BackgroundTransparency = 0.65
+main.Size = UDim2.new(0, 200, 0, 300)
+main.Position = UDim2.new(0, 20, 0.5, -150)
+main.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 main.BorderSizePixel = 0
-main.Name = "MainFrame"
-main.Active = true
-main.Draggable = true
 
-local stroke = Instance.new("UIStroke")
-stroke.Thickness = 2
-stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-stroke.LineJoinMode = Enum.LineJoinMode.Round
-stroke.Parent = main
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.Text = "Ravi Hub"
+title.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.Code
+title.TextSize = 18
 
-local hue = 0
-runService.RenderStepped:Connect(function()
-	hue = (hue + 0.002) % 1
-	stroke.Color = Color3.fromHSV(hue, 1, 1)
+-- Botão fechar
+local closeBtn = Instance.new("TextButton", main)
+closeBtn.Size = UDim2.new(0, 30, 0, 30)
+closeBtn.Position = UDim2.new(1, -30, 0, 0)
+closeBtn.Text = "X"
+closeBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+closeBtn.TextColor3 = Color3.new(1, 1, 1)
+closeBtn.Font = Enum.Font.Code
+closeBtn.TextSize = 14
+closeBtn.MouseButton1Click:Connect(function()
+    screenGui:Destroy()
 end)
 
-local toggleBtn = Instance.new("TextButton", main)
-toggleBtn.Size = UDim2.new(1, 0, 0, 20)
-toggleBtn.Position = UDim2.new(0, 0, 0, 0)
-toggleBtn.Text = "Ravi Hub"
-toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-toggleBtn.TextColor3 = Color3.new(1, 1, 1)
-toggleBtn.Font = Enum.Font.Code
-toggleBtn.TextSize = 13
-
-local contentVisible = true
-local fullSize = UDim2.new(0, 200, 0, 260)
-local minimizedSize = UDim2.new(0, 200, 0, 20)
-
-local function toggleContent()
-	contentVisible = not contentVisible
-	for _, obj in ipairs(main:GetChildren()) do
-		if obj ~= toggleBtn and not obj:IsA("UIStroke") then
-			obj.Visible = contentVisible
-		end
-	end
-	local goal = { Size = contentVisible and fullSize or minimizedSize }
-	tweenService:Create(main, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), goal):Play()
-end
-
-toggleBtn.MouseButton1Click:Connect(toggleContent)
-
-local function createOption(name, y)
-	local label = Instance.new("TextLabel", main)
-	label.Text = name
-	label.Size = UDim2.new(0, 90, 0, 20)
-	label.Position = UDim2.new(0, 10, 0, y)
-	label.BackgroundTransparency = 1
-	label.TextColor3 = Color3.new(1, 1, 1)
-	label.Font = Enum.Font.Code
-	label.TextSize = 12
-
-	local toggle = Instance.new("TextButton", main)
-	toggle.Size = UDim2.new(0, 30, 0, 20)
-	toggle.Position = UDim2.new(0, 100, 0, y)
-	toggle.Text = "Off"
-	toggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-	toggle.TextColor3 = Color3.new(1, 1, 1)
-	toggle.Font = Enum.Font.Code
-	toggle.TextSize = 12
-
-	local input = Instance.new("TextBox", main)
-	input.Size = UDim2.new(0, 50, 0, 20)
-	input.Position = UDim2.new(0, 140, 0, y)
-	input.Text = "50"
-	input.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	input.TextColor3 = Color3.new(1, 1, 1)
-	input.Font = Enum.Font.Code
-	input.TextSize = 12
-	input.ClearTextOnFocus = false
-
-	return toggle, input
-end
-
-local jumpToggle, jumpBox = createOption("Pulo Alto", 30)
-local speedToggle, speedBox = createOption("Velocidade", 60)
-local flyToggle, flyBox = createOption("Voar", 90)
-
-local espToggle = Instance.new("TextButton", main)
-espToggle.Size = UDim2.new(0, 180, 0, 20)
-espToggle.Position = UDim2.new(0, 10, 0, 120)
-espToggle.Text = "ESP: Off"
-espToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-espToggle.TextColor3 = Color3.new(1, 1, 1)
-espToggle.Font = Enum.Font.Code
-espToggle.TextSize = 12
-
-local noclipToggle = Instance.new("TextButton", main)
-noclipToggle.Size = UDim2.new(0, 180, 0, 20)
-noclipToggle.Position = UDim2.new(0, 10, 0, 150)
-noclipToggle.Text = "Noclip: Off"
-noclipToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-noclipToggle.TextColor3 = Color3.new(1, 1, 1)
-noclipToggle.Font = Enum.Font.Code
-noclipToggle.TextSize = 12
-
-local brightToggle = Instance.new("TextButton", main)
-brightToggle.Size = UDim2.new(0, 180, 0, 20)
-brightToggle.Position = UDim2.new(0, 10, 0, 180)
-brightToggle.Text = "Bright: Off"
-brightToggle.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-brightToggle.TextColor3 = Color3.new(1, 1, 1)
-brightToggle.Font = Enum.Font.Code
-brightToggle.TextSize = 12
-
+-- Botão teleport para tools
 local teleportToolBtn = Instance.new("TextButton", main)
-teleportToolBtn.Size = UDim2.new(0, 180, 0, 20)
-teleportToolBtn.Position = UDim2.new(0, 10, 0, 210)
-teleportToolBtn.Text = "Pegar Teleport Tool"
+teleportToolBtn.Size = UDim2.new(0, 180, 0, 30)
+teleportToolBtn.Position = UDim2.new(0, 10, 0, 50)
+teleportToolBtn.Text = "Teleportar para Tools"
 teleportToolBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
 teleportToolBtn.TextColor3 = Color3.new(1, 1, 1)
 teleportToolBtn.Font = Enum.Font.Code
-teleportToolBtn.TextSize = 12
+teleportToolBtn.TextSize = 14
+teleportToolBtn.MouseButton1Click:Connect(function()
+    for _, tool in pairs(workspace:GetDescendants()) do
+        if tool:IsA("Tool") then
+            player.Character:MoveTo(tool.Position)
+        end
+    end
+end)
 
--- Botão Grab Player
+-- Botão teleport para players
+local teleportPlayerBtn = Instance.new("TextButton", main)
+teleportPlayerBtn.Size = UDim2.new(0, 180, 0, 30)
+teleportPlayerBtn.Position = UDim2.new(0, 10, 0, 90)
+teleportPlayerBtn.Text = "Teleportar para Players"
+teleportPlayerBtn.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+teleportPlayerBtn.TextColor3 = Color3.new(1, 1, 1)
+teleportPlayerBtn.Font = Enum.Font.Code
+teleportPlayerBtn.TextSize = 14
+teleportPlayerBtn.MouseButton1Click:Connect(function()
+    for _, plr in pairs(game.Players:GetPlayers()) do
+        if plr ~= player and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") then
+            player.Character:MoveTo(plr.Character.HumanoidRootPart.Position)
+        end
+    end
+end)
+
+-- Função mover com teclas (WASD ou setas)
+runService.RenderStepped:Connect(function()
+    if uis:IsKeyDown(Enum.KeyCode.Left) then
+        player.Character:TranslateBy(Vector3.new(-1, 0, 0))
+    elseif uis:IsKeyDown(Enum.KeyCode.Right) then
+        player.Character:TranslateBy(Vector3.new(1, 0, 0))
+    elseif uis:IsKeyDown(Enum.KeyCode.Up) then
+        player.Character:TranslateBy(Vector3.new(0, 0, -1))
+    elseif uis:IsKeyDown(Enum.KeyCode.Down) then
+        player.Character:TranslateBy(Vector3.new(0, 0, 1))
+    end
+end)
+
+-- Grab Player
 local grabToggle = Instance.new("TextButton", main)
 grabToggle.Size = UDim2.new(0, 90, 0, 20)
 grabToggle.Position = UDim2.new(0, 10, 0, 240)
@@ -173,15 +100,22 @@ playerList.TextColor3 = Color3.new(1, 1, 1)
 playerList.Font = Enum.Font.Code
 playerList.TextSize = 12
 
+local selectedTarget = nil
+local grabbing = false
+local dropdownMenu = nil
+
 playerList.MouseButton1Click:Connect(function()
-	local menu = Instance.new("Frame", screenGui)
-	menu.Position = UDim2.new(0, 220, 0.4, 0)
-	menu.Size = UDim2.new(0, 150, 0, 20 * #game.Players:GetPlayers())
-	menu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-	menu.Name = "PlayerDropdown"
+	if dropdownMenu then dropdownMenu:Destroy() dropdownMenu = nil return end
+
+	dropdownMenu = Instance.new("Frame", screenGui)
+	dropdownMenu.Position = UDim2.new(0, 220, 0.4, 0)
+	dropdownMenu.Size = UDim2.new(0, 150, 0, 20 * #game.Players:GetPlayers())
+	dropdownMenu.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+	dropdownMenu.Name = "PlayerDropdown"
+
 	for i, p in ipairs(game.Players:GetPlayers()) do
 		if p ~= player then
-			local btn = Instance.new("TextButton", menu)
+			local btn = Instance.new("TextButton", dropdownMenu)
 			btn.Size = UDim2.new(1, 0, 0, 20)
 			btn.Position = UDim2.new(0, 0, 0, (i - 1) * 20)
 			btn.Text = p.Name
@@ -192,9 +126,17 @@ playerList.MouseButton1Click:Connect(function()
 			btn.MouseButton1Click:Connect(function()
 				selectedTarget = p
 				playerList.Text = p.Name
-				menu:Destroy()
+				dropdownMenu:Destroy()
+				dropdownMenu = nil
 			end)
 		end
+	end
+end)
+
+uis.InputBegan:Connect(function(input)
+	if input.KeyCode == Enum.KeyCode.Escape and dropdownMenu then
+		dropdownMenu:Destroy()
+		dropdownMenu = nil
 	end
 end)
 
@@ -207,149 +149,13 @@ grabToggle.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Conexões
-jumpToggle.MouseButton1Click:Connect(function()
-	jumpEnabled = not jumpEnabled
-	jumpToggle.Text = jumpEnabled and "On" or "Off"
-end)
-
-speedToggle.MouseButton1Click:Connect(function()
-	speedEnabled = not speedEnabled
-	speedToggle.Text = speedEnabled and "On" or "Off"
-end)
-
-flyToggle.MouseButton1Click:Connect(function()
-	flyEnabled = not flyEnabled
-	flyToggle.Text = flyEnabled and "On" or "Off"
-	local char = player.Character
-	if not flyEnabled and char then
-		if BodyGyro then BodyGyro:Destroy() BodyGyro = nil end
-		if BodyVelocity then BodyVelocity:Destroy() BodyVelocity = nil end
-		local hum = char:FindFirstChild("Humanoid")
-		if hum then hum.PlatformStand = false end
-	end
-end)
-
-espToggle.MouseButton1Click:Connect(function()
-	espEnabled = not espEnabled
-	espToggle.Text = "ESP: " .. (espEnabled and "On" or "Off")
-	if not espEnabled then
-		for _, esp in ipairs(espObjects) do
-			if esp and esp.Parent then esp:Destroy() end
-		end
-		espObjects = {}
-	end
-end)
-
-noclipToggle.MouseButton1Click:Connect(function()
-	noclipEnabled = not noclipEnabled
-	noclipToggle.Text = "Noclip: " .. (noclipEnabled and "On" or "Off")
-end)
-
-brightToggle.MouseButton1Click:Connect(function()
-	brightEnabled = not brightEnabled
-	brightToggle.Text = "Bright: " .. (brightEnabled and "On" or "Off")
-	local lighting = game:GetService("Lighting")
-	if brightEnabled then
-		lighting.Brightness = 5
-		lighting.ClockTime = 12
-		lighting.FogEnd = 1000000
-		lighting.GlobalShadows = false
-	else
-		lighting.Brightness = 1
-		lighting.ClockTime = 14
-		lighting.FogEnd = 1000
-		lighting.GlobalShadows = true
-	end
-end)
-
-teleportToolBtn.MouseButton1Click:Connect(function()
-	giveTeleportTool()
-end)
-
--- Loops
+-- Loop para manter nas costas do player selecionado
 runService.RenderStepped:Connect(function()
-	local char = player.Character
-	if not char or not char:FindFirstChild("HumanoidRootPart") or not char:FindFirstChild("Humanoid") then return end
-	local humanoid = char.Humanoid
-	local hrp = char.HumanoidRootPart
-
-	humanoid.UseJumpPower = true
-	humanoid.JumpPower = jumpEnabled and tonumber(jumpBox.Text) or 50
-	humanoid.WalkSpeed = speedEnabled and tonumber(speedBox.Text) or 16
-
-	if flyEnabled then
-		if not BodyGyro or not BodyVelocity then
-			BodyGyro = Instance.new("BodyGyro", hrp)
-			BodyGyro.P = 9e4
-			BodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-			BodyVelocity = Instance.new("BodyVelocity", hrp)
-			BodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-			humanoid.PlatformStand = true
-		end
-		local cam = workspace.CurrentCamera
-		local speed = tonumber(flyBox.Text) or 50
-		BodyGyro.CFrame = cam.CFrame
-		BodyVelocity.Velocity = cam.CFrame.LookVector * speed
-	end
-
-	if espEnabled then
-		for _, p in pairs(game.Players:GetPlayers()) do
-			if p ~= player and p.Character and p.Character:FindFirstChild("Head") then
-				if not p.Character.Head:FindFirstChild("ESP") then
-					local tag = Instance.new("BillboardGui", p.Character.Head)
-					tag.Name = "ESP"
-					tag.Size = UDim2.new(0, 100, 0, 40)
-					tag.StudsOffset = Vector3.new(0, 2, 0)
-					tag.AlwaysOnTop = true
-					local nameLabel = Instance.new("TextLabel", tag)
-					nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
-					nameLabel.BackgroundTransparency = 1
-					nameLabel.Text = p.Name
-					nameLabel.TextColor3 = Color3.new(1, 1, 1)
-					nameLabel.Font = Enum.Font.Code
-					nameLabel.TextSize = 14
-					local distLabel = Instance.new("TextLabel", tag)
-					distLabel.Size = UDim2.new(1, 0, 0.5, 0)
-					distLabel.Position = UDim2.new(0, 0, 0.5, 0)
-					distLabel.BackgroundTransparency = 1
-					distLabel.TextColor3 = Color3.new(1, 1, 1)
-					distLabel.Font = Enum.Font.Code
-					distLabel.TextSize = 12
-					runService.RenderStepped:Connect(function()
-						if player.Character and p.Character and player.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("HumanoidRootPart") then
-							local dist = (player.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
-							distLabel.Text = string.format("Distância: %.1f", dist)
-						end
-					end)
-					table.insert(espObjects, tag)
-				end
-			end
-		end
-	end
-
 	if grabbing and selectedTarget and selectedTarget.Character and player.Character then
 		local myRoot = player.Character:FindFirstChild("HumanoidRootPart")
 		local targetRoot = selectedTarget.Character:FindFirstChild("HumanoidRootPart")
 		if myRoot and targetRoot then
 			myRoot.CFrame = targetRoot.CFrame * CFrame.new(0, 0, 1)
-			local hum = selectedTarget.Character:FindFirstChildOfClass("Humanoid")
-			if hum and hum.Health > 0 then
-				hum:TakeDamage(1)
-			end
-		end
-	end
-end)
-
-runService.Stepped:Connect(function()
-	if noclipEnabled then
-		local char = player.Character
-		if char then
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
 		end
 	end
 end)
